@@ -81,7 +81,7 @@ export function EscalationDetails({ escalation, isOpen, onClose }: EscalationDet
                             <p className="font-medium">{escalation.endDate ? format(escalation.endDate, "PPP") : 'N/A'}</p>
                         </div>
                         <div>
-                            <p className="text-muted-foreground">Assigned Warden</p>
+                            <p className="text-muted-foreground">Assigned Supervisor</p>
                             <p className="font-medium">{escalation.assignedTo}</p>
                         </div>
                         <div>

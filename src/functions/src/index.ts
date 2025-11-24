@@ -23,11 +23,11 @@ export const createEmployeeInvite = onCall<InviteEmployeeData>(
       throw new HttpsError("unauthenticated", "Sign in required.");
     }
     
-    // Check for Admin or CRM role on the caller
+    // Check for Admin or Hostel Office role on the caller
     const callerAuth = await admin.auth().getUser(callerUid);
     const callerRole = callerAuth.customClaims?.role;
-    if (callerRole !== 'Admin' && callerRole !== 'CRM') {
-        throw new HttpsError('permission-denied', 'You must be an Admin or CRM to invite employees.');
+    if (callerRole !== 'Admin' && callerRole !== 'Hostel Office') {
+        throw new HttpsError('permission-denied', 'You must be an Admin or Hostel Office to invite employees.');
     }
 
     const { email, fullName, role, department } = request.data;

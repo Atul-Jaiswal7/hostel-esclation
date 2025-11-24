@@ -61,7 +61,7 @@ export async function sendNewEscalationNotification(props: NewEscalationNotifica
                         <h2>🔔 New Escalation Assignment</h2>
                     </div>
                     
-                    <p>Dear Warden,</p>
+                    <p>Dear Supervisor,</p>
                     
                     <p>A new escalation has been assigned to your department and requires your attention.</p>
                     
@@ -166,7 +166,7 @@ export async function sendTeamMemberAssignmentNotification(props: TeamMemberAssi
                     
                     <p>Dear Team Member,</p>
                     
-                    <p>You have been assigned a new escalation task by <span class="hod-name">${hodName}</span> (Warden).</p>
+                    <p>You have been assigned a new escalation task by <span class="hod-name">${hodName}</span> (Supervisor).</p>
                     
                     <h3>📋 Task Details:</h3>
                     <ul>
@@ -304,7 +304,7 @@ export async function sendEscalationStatusUpdateNotification(props: EscalationSt
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                to: 'crm@example.com', // This will be replaced with actual CRM emails
+                to: 'hostel.office@example.com', // This will be replaced with actual Hostel Office emails
                 subject,
                 body,
                 type: 'escalation-status-update'
@@ -319,18 +319,18 @@ export async function sendEscalationStatusUpdateNotification(props: EscalationSt
         
         if (result.success) {
             if (result.skipped) {
-                console.log(`⚠️ CRM notification skipped for escalation #${escalationId} - SendGrid not configured`);
+                console.log(`⚠️ Hostel Office notification skipped for escalation #${escalationId} - SendGrid not configured`);
             } else {
-                console.log(`✅ CRM notification sent for escalation #${escalationId}`);
+                console.log(`✅ Hostel Office notification sent for escalation #${escalationId}`);
             }
         } else {
-            console.error(`❌ Failed to send CRM notification for escalation #${escalationId}`);
+            console.error(`❌ Failed to send Hostel Office notification for escalation #${escalationId}`);
         }
         
         return result;
 
     } catch (error) {
-        console.error(`Failed to send CRM notification for escalation #${escalationId}:`, error);
+        console.error(`Failed to send Hostel Office notification for escalation #${escalationId}:`, error);
         return { success: false };
     }
 }

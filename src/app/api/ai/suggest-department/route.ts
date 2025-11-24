@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
 
     // Use a more stable model name
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-    const prompt = `Given the following escalation description, suggest the most appropriate department. The possible departments are: Technical, Documentation, Finance, Maintenance, and Legal. Only respond with the department name, nothing else.
+    const prompt = `Given the following escalation description, suggest the most appropriate department. The possible departments are: Maintenance, Mess, Water, Security, Cleaning, Internet, and Other. Only respond with the department name in the exact same spelling given above, nothing else.
 
 Description: ${description}`;
 
@@ -37,7 +37,7 @@ Description: ${description}`;
     const department = response.text().trim();
 
     // Validate the response
-    const validDepartments = ['Technical', 'Documentation', 'Finance', 'Maintenance', 'Legal'];
+    const validDepartments = ['Maintenance','Mess','Water','Security','Cleaning','Internet','Other'];
     const suggestedDepartment = validDepartments.find(dept => 
       department.toLowerCase().includes(dept.toLowerCase())
     ) || 'Technical'; // Default fallback

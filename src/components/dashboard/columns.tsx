@@ -132,7 +132,7 @@ export const columns = ({ onViewDetails, onUpdateStatus, onAssignTeamMember }: G
   },
   {
     accessorKey: "assignedTo",
-    header: "Assigned Warden",
+    header: "Assigned Supervisor",
   },
   {
     accessorKey: "assignedTeamMemberEmail",

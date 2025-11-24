@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/firebase/admin';
+import { adminAuth, adminDb, isInitialized } from '@/firebase/admin';
 import * as firebaseAdmin from 'firebase-admin';
 
 // Helper function to retry Firebase operations
@@ -29,6 +29,30 @@ async function retryOperation<T>(
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Firebase Admin is properly initialized
+    if (!isInitialized) {
+      console.error('❌ Firebase Admin not properly initialized');
+      console.error('   Server Project ID:', process.env.FIREBASE_PROJECT_ID || 'NOT SET');
+      console.error('   Client Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'NOT SET');
+      return NextResponse.json(
+        { error: 'Server configuration error: Firebase Admin not initialized. Please check server environment variables.' },
+        { status: 500 }
+      );
+    }
+
+    // Verify project IDs match
+    const serverProjectId = process.env.FIREBASE_PROJECT_ID;
+    const clientProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    if (serverProjectId && clientProjectId && serverProjectId !== clientProjectId) {
+      console.error('❌ Project ID mismatch detected');
+      console.error('   Server Project ID:', serverProjectId);
+      console.error('   Client Project ID:', clientProjectId);
+      return NextResponse.json(
+        { error: 'Configuration error: Server and client Firebase project IDs do not match.' },
+        { status: 500 }
+      );
+    }
+
     // Get the authorization header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -38,15 +62,73 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const idToken = authHeader.split('Bearer ')[1];
+    const idToken = authHeader.split('Bearer ')[1]?.trim();
+    
+    // Validate token exists and is not empty
+    if (!idToken || idToken.length === 0) {
+      console.error('❌ Token extraction failed');
+      console.error('   Auth header:', authHeader ? `${authHeader.substring(0, 20)}...` : 'MISSING');
+      return NextResponse.json(
+        { error: 'Invalid token format: Token is missing or empty' },
+        { status: 401 }
+      );
+    }
+    
+    // Log token info (first/last chars only for security)
+    console.log('🔑 Token received:', {
+      length: idToken.length,
+      startsWith: idToken.substring(0, 10),
+      endsWith: idToken.substring(idToken.length - 10)
+    });
     
     // Verify the Firebase ID token
     let decodedToken;
     try {
-      decodedToken = await adminAuth.verifyIdToken(idToken);
-    } catch (error) {
+      decodedToken = await adminAuth.verifyIdToken(idToken, true); // Check revoked tokens
+      
+      // Verify the token's project matches our server project
+      const tokenProjectId = (decodedToken as any).firebase?.project_id || (decodedToken as any).aud;
+      if (tokenProjectId && serverProjectId && tokenProjectId !== serverProjectId) {
+        console.error('❌ Token project mismatch');
+        console.error('   Token Project ID:', tokenProjectId);
+        console.error('   Server Project ID:', serverProjectId);
+        return NextResponse.json(
+          { error: 'Token project does not match server configuration. Please ensure you are logged into the correct project.' },
+          { status: 401 }
+        );
+      }
+    } catch (error: any) {
+      console.error('❌ Token verification failed:', error);
+      console.error('   Error code:', error.code);
+      console.error('   Error message:', error.message);
+      console.error('   Server Project ID:', process.env.FIREBASE_PROJECT_ID);
+      console.error('   Client Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+      console.error('   Token length:', idToken.length);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Invalid authentication token';
+      if (error.code === 'auth/argument-error') {
+        // This usually means the service account credentials don't match the project
+        const serviceAccountEmail = process.env.FIREBASE_CLIENT_EMAIL || 'NOT SET';
+        const hasMismatch = serviceAccountEmail.includes('securestream-bmwf2') && serverProjectId === 'hostel-b2f9f';
+        
+        if (hasMismatch) {
+          errorMessage = 'Configuration error: Firebase Admin SDK service account credentials are from a different project. Please update FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in your .env file with credentials from the hostel-b2f9f project.';
+        } else {
+          errorMessage = 'Invalid token format. This may indicate a mismatch between your Firebase Admin SDK credentials and the project ID. Please verify your service account credentials match the project.';
+        }
+      } else if (error.code === 'auth/id-token-expired') {
+        errorMessage = 'Token has expired. Please refresh and try again.';
+      } else if (error.code === 'auth/id-token-revoked') {
+        errorMessage = 'Token has been revoked. Please log in again.';
+      } else if (error.message && error.message.includes('insufficient permission')) {
+        errorMessage = 'Service account lacks required permissions. Please grant the service account these IAM roles in Google Cloud Console: "Firebase Admin SDK Administrator Service Agent", "Service Account Token Creator", and "Firebase Authentication Admin". See FIX_PERMISSIONS.md for detailed instructions.';
+      } else if (error.message) {
+        errorMessage = `Token verification failed: ${error.message}`;
+      }
+      
       return NextResponse.json(
-        { error: 'Invalid authentication token' },
+        { error: errorMessage },
         { status: 401 }
       );
     }
@@ -72,7 +154,7 @@ export async function POST(request: NextRequest) {
     const callerEmail = (decodedToken as any).email || 'unknown';
     console.log(`API: Admin access granted for user: ${callerEmail}`);
 
-    const { fullName, email, role, department, isAdmin, isCRM } = await request.json();
+    const { fullName, email, role, department, hostel, isAdmin } = await request.json();
 
     // Validate required fields
     if (!fullName || !email) {
@@ -82,12 +164,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If neither Admin nor CRM is selected, role and department are required
-    if (!isAdmin && !isCRM && (!role || !department)) {
-      return NextResponse.json(
-        { error: 'Role and department are required for regular employees' },
-        { status: 400 }
-      );
+    // Check if role is Hostel Office
+    const isHostelOffice = role === 'Hostel Office';
+
+    // Validation based on role
+    if (!isAdmin) {
+      if (!role) {
+        return NextResponse.json(
+          { error: 'Role is required for regular employees' },
+          { status: 400 }
+        );
+      }
+      if (isHostelOffice && !hostel) {
+        return NextResponse.json(
+          { error: 'Hostel is required for Hostel Office employees' },
+          { status: 400 }
+        );
+      }
+      if (!isHostelOffice && !department) {
+        return NextResponse.json(
+          { error: 'Department is required for regular employees' },
+          { status: 400 }
+        );
+      }
     }
 
     try {
@@ -135,7 +234,7 @@ export async function POST(request: NextRequest) {
       const customClaims: any = {};
       if (role) customClaims.role = role;
       if (isAdmin) customClaims.isAdmin = true;
-      if (isCRM) customClaims.isCRM = true;
+      if (isHostelOffice) customClaims.isHostelOffice = true;
       
       await retryOperation(async () => {
         const setClaimsPromise = adminAuth.setCustomUserClaims(userRecord.uid, customClaims);
@@ -147,17 +246,21 @@ export async function POST(request: NextRequest) {
       });
 
       // Create employee data for Firestore
-      const employeeData = {
+      const employeeData: any = {
         id: userRecord.uid,
         name: fullName,
         email: email,
-        role: role || (isAdmin ? 'Admin' : isCRM ? 'CRM' : 'Employee'),
-        department: department || (isAdmin ? 'Administration' : isCRM ? 'CRM' : 'General'),
+        role: role || (isAdmin ? 'Admin' : 'Employee'),
+        department: isHostelOffice ? (hostel || 'Hostel Office') : (department || (isAdmin ? 'Administration' : 'General')),
         createdAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
         isActive: true,
         isAdmin: isAdmin || false,
-        isCRM: isCRM || false,
       };
+      
+      // Add hostel field if role is Hostel Office
+      if (isHostelOffice && hostel) {
+        employeeData.hostel = hostel;
+      }
 
       // Add to Firestore with retry and timeout
       await retryOperation(async () => {

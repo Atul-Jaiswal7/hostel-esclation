@@ -26,7 +26,7 @@ export function EscalationProvider({ children }: { children: React.ReactNode }) 
   const [escalations, setEscalations] = React.useState<Escalation[]>([]);
   const [loading, setLoading] = React.useState(true);
   const { toast } = useToast();
-  const { user, isAnonymous, loading: authLoading } = useAuth();
+  const { user, isAnonymous, loading: authLoading, isHostelOffice, hostel } = useAuth();
 
   React.useEffect(() => {
     if (authLoading) {
@@ -40,7 +40,19 @@ export function EscalationProvider({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    const q = query(collection(db, "escalations"), orderBy("startDate", "desc"));
+    // Build query based on user role
+    let q;
+    if (isHostelOffice && hostel) {
+      // Hostel Office employees only see escalations for their assigned hostel
+      q = query(
+        collection(db, "escalations"),
+        where("hostelName", "==", hostel),
+        orderBy("startDate", "desc")
+      );
+    } else {
+      // Admins and other users see all escalations
+      q = query(collection(db, "escalations"), orderBy("startDate", "desc"));
+    }
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const escalationsData = querySnapshot.docs.map(doc => fromFirestore<Escalation>(doc));
@@ -54,7 +66,7 @@ export function EscalationProvider({ children }: { children: React.ReactNode }) 
 
     return () => unsubscribe();
 
-  }, [user, isAnonymous, authLoading, toast]);
+  }, [user, isAnonymous, authLoading, isHostelOffice, hostel, toast]);
 
   const addEscalation = async (escalation: Omit<Escalation, 'id' | 'startDate' | 'endDate' | 'history' | 'involvedUsers' | 'createdBy'>) => {
     try {
@@ -130,9 +142,9 @@ export function EscalationProvider({ children }: { children: React.ReactNode }) 
             history: arrayUnion(newComment),
         });
 
-        // Send CRM notification for status update
+        // Send Hostel Office notification for status update
         try {
-            const response = await fetch('/api/notifications/crm-status-update', {
+            const response = await fetch('/api/notifications/hostel-office-status-update', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -148,13 +160,13 @@ export function EscalationProvider({ children }: { children: React.ReactNode }) 
             });
 
             if (!response.ok) {
-                console.error('Failed to send CRM status update notification');
+                console.error('Failed to send Hostel Office status update notification');
             } else {
                 const result = await response.json();
-                console.log('CRM status update notification sent:', result);
+                console.log('Hostel Office status update notification sent:', result);
             }
         } catch (error) {
-            console.error('Error sending CRM status update notification:', error);
+            console.error('Error sending Hostel Office status update notification:', error);
         }
 
         toast({ title: "Status Updated", description: `Escalation status has been updated to ${status}.` });
@@ -200,7 +212,7 @@ export function EscalationProvider({ children }: { children: React.ReactNode }) 
                     escalationId,
                     studentName: escalation.studentName,
                     department: escalation.department,
-                    hodName: escalation.assignedTo, // This is the Warden name
+                    hodName: escalation.assignedTo, // This is the Supervisor name
                     description: escalation.description,
                 }),
             });

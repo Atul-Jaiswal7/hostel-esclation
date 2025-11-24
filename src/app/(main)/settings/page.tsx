@@ -25,11 +25,11 @@ export default function SettingsPage() {
     const [isSeeding, setIsSeeding] = React.useState(false);
     const [dialogOpen, setDialogOpen] = React.useState(false);
     const [dialogData, setDialogData] = React.useState<{
-        type: 'departments' | 'statuses' | 'roles';
+        type: 'departments' | 'statuses' | 'roles' | 'hostels';
         value?: string;
     } | null>(null);
 
-    const handleOpenDialog = (type: 'departments' | 'statuses' | 'roles', value?: string) => {
+    const handleOpenDialog = (type: 'departments' | 'statuses' | 'roles' | 'hostels', value?: string) => {
         setDialogData({ type, value });
         setDialogOpen(true);
     };
@@ -39,7 +39,7 @@ export default function SettingsPage() {
         setDialogOpen(false);
     };
 
-    const handleSave = async (type: 'departments' | 'statuses' | 'roles', newValue: string, oldValue?: string) => {
+    const handleSave = async (type: 'departments' | 'statuses' | 'roles' | 'hostels', newValue: string, oldValue?: string) => {
         if (oldValue) {
             await updateSetting(type, oldValue, newValue);
         } else {
@@ -48,7 +48,7 @@ export default function SettingsPage() {
         handleCloseDialog();
     };
 
-    const handleDelete = async (type: 'departments' | 'statuses' | 'roles', value: string) => {
+    const handleDelete = async (type: 'departments' | 'statuses' | 'roles' | 'hostels', value: string) => {
         // Consider adding a confirmation dialog here in a real app
         await deleteSetting(type, value);
     };
@@ -136,6 +136,14 @@ export default function SettingsPage() {
                     onAdd={() => handleOpenDialog('roles')}
                     onEdit={(item) => handleOpenDialog('roles', item)}
                     onDelete={(item) => handleDelete('roles', item)}
+                />
+                <ListCard
+                    title="Hostels"
+                    description="The list of all hostels managed by Hostel Office employees."
+                    items={settings.hostels || []}
+                    onAdd={() => handleOpenDialog('hostels')}
+                    onEdit={(item) => handleOpenDialog('hostels', item)}
+                    onDelete={(item) => handleDelete('hostels', item)}
                 />
             </div>
             <Separator />

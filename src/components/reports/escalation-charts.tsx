@@ -40,14 +40,14 @@ export function EscalationCharts({ escalations, loading }: EscalationChartsProps
     total: escalations.filter(e => e.status === status).length,
   }))
 
-  // Group escalations by building
-  const buildingCounts = escalations.reduce((acc, escalation) => {
-    const building = escalation.buildingName || 'Unknown Building';
-    acc[building] = (acc[building] || 0) + 1;
+  // Group escalations by hostel
+  const hostelCounts = escalations.reduce((acc, escalation) => {
+    const hostel = escalation.hostelName || 'Unknown Hostel';
+    acc[hostel] = (acc[hostel] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const byBuilding = Object.entries(buildingCounts)
+  const byHostel = Object.entries(hostelCounts)
     .map(([name, total]) => ({ name, total }))
     .sort((a, b) => b.total - a.total); // Sort by count descending
 
@@ -127,13 +127,13 @@ export function EscalationCharts({ escalations, loading }: EscalationChartsProps
       </Card>
       <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
-          <CardTitle>Escalations by Building</CardTitle>
-          <CardDescription>Distribution of escalations across different buildings.</CardDescription>
+          <CardTitle>Escalations by Hostel</CardTitle>
+          <CardDescription>Distribution of escalations across different hostels.</CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer config={{}} className="w-full h-[220px] sm:h-[260px] md:h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byBuilding} margin={{ top: 12, right: 12, bottom: isMobile ? 56 : 24, left: 0 }}>
+              <BarChart data={byHostel} margin={{ top: 12, right: 12, bottom: isMobile ? 56 : 24, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="name" 

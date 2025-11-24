@@ -28,11 +28,11 @@ export interface Escalation {
     department: Department;
     description: string;
     status: EscalationStatus;
-    assignedTo: string; // Warden name
+    assignedTo: string; // Supervisor name
     hodEmail: string;
     assignedTeamMemberEmail: string | null;
     history: Comment[];
-    involvedUsers: string[]; // Creator, Warden, assigned Team Member
+    involvedUsers: string[]; // Creator, Supervisor, assigned Team Member
     createdBy: string; // Email of user who created the escalation
 }
 
@@ -50,8 +50,8 @@ export interface Employee {
     email: string;
     role: EmployeeRole;
     department: Department;
+    hostel?: string;
     isAdmin?: boolean;
-    isCRM?: boolean;
     createdAt?: Date;
     isActive?: boolean;
 }

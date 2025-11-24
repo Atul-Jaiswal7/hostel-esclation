@@ -59,15 +59,15 @@ export function NewEscalationForm() {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [suggestion, setSuggestion] = React.useState<string | null>(null);
 
-  const wardens = employees.filter(e => e.role === "Warden");
-  const wardenMapping = React.useMemo(() => {
-    return wardens.reduce((acc, warden) => {
-        if (warden.department) {
-            acc[warden.department] = { name: `${warden.name} (Warden)`, email: warden.email };
+  const supervisors = employees.filter(e => e.role === "Supervisor");
+  const supervisorMapping = React.useMemo(() => {
+    return supervisors.reduce((acc, supervisor) => {
+        if (supervisor.department) {
+            acc[supervisor.department] = { name: `${supervisor.name} (Supervisor)`, email: supervisor.email };
         }
         return acc;
     }, {} as Record<string, { name: string; email: string }>);
-  }, [wardens]);
+  }, [supervisors]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -134,11 +134,11 @@ export function NewEscalationForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    const wardenDetails = wardenMapping[values.department];
-    if (!wardenDetails) {
+    const supervisorDetails = supervisorMapping[values.department];
+    if (!supervisorDetails) {
         toast({
-            title: "Warden Not Found",
-            description: `There is no Warden assigned for the "${values.department}" department. Please assign a Warden in the Employees section.`,
+            title: "Supervisor Not Found",
+            description: `There is no Supervisor assigned for the "${values.department}" department. Please assign a Supervisor in the Employees section.`,
             variant: "destructive",
         });
         setIsSubmitting(false);
@@ -149,14 +149,14 @@ export function NewEscalationForm() {
         ...values,
         assignedTeamMemberEmail: values.assignedTeamMemberEmail || null,
         status: settings.statuses[0] || "New",
-        assignedTo: wardenDetails.name,
-        hodEmail: wardenDetails.email,
+        assignedTo: supervisorDetails.name,
+        hodEmail: supervisorDetails.email,
     };
     await addEscalation(newEscalation);
 
     toast({
       title: "New Escalation Created",
-      description: `A new ticket has been created for ${values.studentName} and assigned to ${wardenDetails.name}.`,
+      description: `A new ticket has been created for ${values.studentName} and assigned to ${supervisorDetails.name}.`,
     })
     form.reset();
     setSuggestion(null);
@@ -265,14 +265,14 @@ export function NewEscalationForm() {
                         {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                     </Button>
                 </div>
-                 {form.watch("department") && wardenMapping[form.watch("department")] && (
+                 {form.watch("department") && supervisorMapping[form.watch("department")] && (
                     <FormDescription>
-                        This will be assigned to: <strong>{wardenMapping[form.watch("department")].name}</strong>
+                        This will be assigned to: <strong>{supervisorMapping[form.watch("department")].name}</strong>
                     </FormDescription>
                 )}
-                 {form.watch("department") && !wardenMapping[form.watch("department")] && (
+                 {form.watch("department") && !supervisorMapping[form.watch("department")] && (
                     <FormDescription className="text-destructive">
-                        No Warden assigned for this department.
+                        No Supervisor assigned for this department.
                     </FormDescription>
                 )}
                 {suggestion && !isSuggesting && (
@@ -299,7 +299,7 @@ export function NewEscalationForm() {
                         <Input placeholder="team.member@example.com" {...field} />
                     </FormControl>
                      <FormDescription>
-                        The Warden can assign this later if left blank.
+                        The Supervisor can assign this later if left blank.
                     </FormDescription>
                     <FormMessage />
                     </FormItem>

@@ -3,11 +3,11 @@
 ## Core Features:
 
 - Escalation Logging: Allow Hostel Office users to log new student escalations, categorizing them by issue type (maintenance, mess, water, electricity, security, cleaning, internet, other).
-- Dashboard View: Display a dashboard view of all escalations, filtered by category, status, and assigned Warden.
-- Automated Notifications: Automatically notify relevant Wardens when a new escalation is logged in their area.
-- Status Updates: Enable Wardens to update the status of escalations and add comments to track progress.
+- Dashboard View: Display a dashboard view of all escalations, filtered by category, status, and assigned Supervisor.
+- Automated Notifications: Automatically notify relevant Supervisors when a new escalation is logged in their area.
+- Status Updates: Enable Supervisors to update the status of escalations and add comments to track progress.
 - AI-Powered Categorization: Provide AI-powered suggestions for escalation categorization based on keywords in the description field. This will use a LLM as a tool for providing the best suggestion for the category.
-- Reporting: Allow Hostel Office and Wardens to generate summary reports of escalations by type, resolution time, and other metrics.
+- Reporting: Allow Hostel Office and Supervisors to generate summary reports of escalations by type, resolution time, and other metrics.
 - Escalation Search: Enable users to search escalations using keywords and filters.
 
 ## Style Guidelines:

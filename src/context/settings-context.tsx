@@ -5,7 +5,7 @@ import * as React from "react"
 import { db, auth } from "../firebase/config";
 import { doc, getDoc, setDoc, collection, writeBatch, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { INITIAL_DEPARTMENTS, INITIAL_ROLES, INITIAL_STATUSES, MOCK_EMPLOYEES, MOCK_ESCALATIONS } from "@/lib/mock-data";
+import { INITIAL_DEPARTMENTS, INITIAL_ROLES, INITIAL_STATUSES, INITIAL_HOSTELS, MOCK_EMPLOYEES, MOCK_ESCALATIONS } from "@/lib/mock-data";
 import { useAuth } from "@/hooks/useAuth";
 
 
@@ -13,6 +13,7 @@ type SettingsType = {
   departments: string[];
   statuses: string[];
   roles: string[];
+  hostels: string[];
 };
 
 interface SettingsContextType {
@@ -30,6 +31,7 @@ const initialSettings: SettingsType = {
   departments: INITIAL_DEPARTMENTS,
   statuses: INITIAL_STATUSES,
   roles: INITIAL_ROLES,
+  hostels: INITIAL_HOSTELS,
 };
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
@@ -45,7 +47,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     try {
       const docSnap = await getDoc(settingsDocRef);
       if (docSnap.exists()) {
-        setSettings(docSnap.data() as SettingsType);
+        const data = docSnap.data() as SettingsType;
+        // Ensure hostels array exists for backward compatibility
+        setSettings({
+          ...data,
+          hostels: data.hostels || INITIAL_HOSTELS,
+        });
       } else {
         console.log("Settings document does not exist, using initial mock settings.");
         setSettings(initialSettings);
@@ -147,7 +154,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       try {
           const batch = writeBatch(db);
 
-          const settingsData = { departments: INITIAL_DEPARTMENTS, roles: INITIAL_ROLES, statuses: INITIAL_STATUSES };
+          const settingsData = { departments: INITIAL_DEPARTMENTS, roles: INITIAL_ROLES, statuses: INITIAL_STATUSES, hostels: INITIAL_HOSTELS };
           batch.set(doc(db, "settings", "system"), settingsData);
           
           const employeesCollection = collection(db, "employees");
@@ -159,7 +166,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           const escalationsCollection = collection(db, "escalations");
           MOCK_ESCALATIONS.forEach(esc => {
               const newDoc = doc(escalationsCollection);
-              const hod = MOCK_EMPLOYEES.find(e => e.department === esc.department && e.role === "Warden");
+              const hod = MOCK_EMPLOYEES.find(e => e.department === esc.department && e.role === "Supervisor");
               const teamMember = MOCK_EMPLOYEES.find(e => e.department === esc.department && e.role === "Team Member");
               
               const involvedUsers = [userEmail];

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
                     
                     <p>Dear Team Member,</p>
                     
-                    <p>You have been assigned a new escalation task by <span class="hod-name">${hodName}</span> (Warden).</p>
+                    <p>You have been assigned a new escalation task by <span class="hod-name">${hodName}</span> (Supervisor).</p>
                     
                     <h3>📋 Task Details:</h3>
                     <ul>

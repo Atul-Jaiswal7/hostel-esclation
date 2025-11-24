@@ -31,21 +31,21 @@ interface EditEmployeeDialogProps {
 
 // Predefined departments and roles
 const DEPARTMENTS = [
-  "Technical",
-  "Finance", 
-  "Legal",
-  "Documentation",
-  "CRM",
-  "Management",
-  "Operations",
-  "Test"
+  "Maintenance",
+  "Mess",
+  "Water",
+  "Security",
+  "Cleaning",
+  "Internet",
+  "Other"
 ];
+
 
 const ROLES = [
   "Admin",
   "HOD",
   "Team Member",
-  "CRM",
+  "Hostel Office",
   "Test"
 ];
 

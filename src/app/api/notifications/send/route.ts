@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         error: 'Failed to send notification',
         details: process.env.NODE_ENV === 'development' ? { status, body } : undefined,
       },
+      
       { status: 500 }
     );
   }

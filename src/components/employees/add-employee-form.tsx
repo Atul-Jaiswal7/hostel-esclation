@@ -41,16 +41,24 @@ const formSchema = z.object({
   }),
   role: z.string().optional(),
   department: z.string().optional(),
+  hostel: z.string().optional(),
   isAdmin: z.boolean().default(false),
-  isCRM: z.boolean().default(false),
 }).refine((data) => {
-  // If neither Admin nor CRM is selected, role and department are required
-  if (!data.isAdmin && !data.isCRM) {
-    return data.role && data.department;
+  // If Admin is not selected, role is required
+  if (!data.isAdmin && !data.role) {
+    return false;
+  }
+  // If role is Hostel Office, hostel is required instead of department
+  if (data.role === 'Hostel Office') {
+    return !!data.hostel;
+  }
+  // For other roles (non-admin, non-Hostel Office), department is required
+  if (!data.isAdmin && data.role && data.role !== 'Hostel Office') {
+    return !!data.department;
   }
   return true;
 }, {
-  message: "Role and Department are required for regular employees",
+  message: "Role and Department/Hostel are required for regular employees",
   path: ["role"]
 })
 
@@ -69,10 +77,14 @@ export function AddEmployeeForm() {
       email: "",
       role: "",
       department: "",
+      hostel: "",
       isAdmin: false,
-      isCRM: false,
     },
   })
+
+  // Watch role to conditionally show/hide fields
+  const selectedRole = form.watch("role");
+  const isHostelOffice = selectedRole === 'Hostel Office';
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
@@ -88,15 +100,47 @@ export function AddEmployeeForm() {
             throw new Error("Only administrators can invite employees.");
         }
 
-        // Get the user's ID token
-        const idToken = await user.getIdToken();
+        // Get the user's ID token (force refresh to ensure it's valid and includes latest claims)
+        let idToken: string;
+        try {
+            idToken = await user.getIdToken(true);
+            if (!idToken || typeof idToken !== 'string' || idToken.trim().length === 0) {
+                console.error("Invalid token received:", { 
+                    exists: !!idToken, 
+                    type: typeof idToken, 
+                    length: idToken?.length 
+                });
+                throw new Error("Failed to retrieve authentication token. Please try logging out and back in.");
+            }
+            
+            // Log token info for debugging (first/last chars only)
+            console.log("Token retrieved:", {
+                length: idToken.length,
+                startsWith: idToken.substring(0, 10),
+                userEmail: user.email
+            });
+        } catch (tokenError: any) {
+            console.error("Error getting ID token:", tokenError);
+            console.error("Token error details:", {
+                code: tokenError.code,
+                message: tokenError.message,
+                userEmail: user.email
+            });
+            throw new Error("Authentication error: Unable to get valid token. Please try logging out and back in.");
+        }
+        
+        // Ensure token is properly formatted
+        const formattedToken = idToken.trim();
+        if (!formattedToken) {
+            throw new Error("Token is empty after formatting. Please try logging out and back in.");
+        }
         
         // Call the API endpoint to create the employee
         const response = await fetch('/api/employees/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
+                'Authorization': `Bearer ${formattedToken}`,
             },
             body: JSON.stringify(values),
         });
@@ -165,6 +209,12 @@ export function AddEmployeeForm() {
                 errorMessage = "Invalid email address.";
             } else if (error.message.includes('auth/weak-password')) {
                 errorMessage = "Password is too weak.";
+            } else if (error.message.includes('Token has expired') || error.message.includes('Token verification failed')) {
+                errorMessage = "Your session has expired. Please refresh the page and try again.";
+            } else if (error.message.includes('Project ID') || error.message.includes('configuration error')) {
+                errorMessage = "Server configuration error. Please contact your administrator.";
+            } else if (error.message.includes('Firebase Admin not initialized')) {
+                errorMessage = "Server configuration error. Please contact your administrator.";
             } else {
                 errorMessage = error.message;
             }
@@ -227,7 +277,15 @@ export function AddEmployeeForm() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Role</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={form.watch("isAdmin") || form.watch("isCRM")}>
+                        <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            // Reset department/hostel when role changes
+                            if (value === 'Hostel Office') {
+                                form.setValue('department', '');
+                            } else {
+                                form.setValue('hostel', '');
+                            }
+                        }} defaultValue={field.value} value={field.value} disabled={form.watch("isAdmin")}>
                             <FormControl>
                                 <SelectTrigger>
                                 <SelectValue placeholder="Select a role" />
@@ -243,28 +301,53 @@ export function AddEmployeeForm() {
                         </FormItem>
                     )}
                 />
-                <FormField
-                    control={form.control}
-                    name="department"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Department</FormLabel>
-                         <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={form.watch("isAdmin") || form.watch("isCRM")}>
-                            <FormControl>
-                                <SelectTrigger>
-                                <SelectValue placeholder="Select a department" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {settings.departments.map((dep) => (
-                                    <SelectItem key={dep} value={dep}>{dep}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                {isHostelOffice ? (
+                    <FormField
+                        control={form.control}
+                        name="hostel"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Hostel</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={form.watch("isAdmin")}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select a hostel" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {settings.hostels.map((hostel) => (
+                                        <SelectItem key={hostel} value={hostel}>{hostel}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                ) : (
+                    <FormField
+                        control={form.control}
+                        name="department"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value} disabled={form.watch("isAdmin") || isHostelOffice}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select a department" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {settings.departments.map((dep) => (
+                                        <SelectItem key={dep} value={dep}>{dep}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -282,26 +365,6 @@ export function AddEmployeeForm() {
                                 <FormLabel>Is Admin</FormLabel>
                                 <p className="text-sm text-muted-foreground">
                                     Grant administrative privileges
-                                </p>
-                            </div>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="isCRM"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                                <Checkbox
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>Is CRM</FormLabel>
-                                <p className="text-sm text-muted-foreground">
-                                    Grant CRM privileges
                                 </p>
                             </div>
                         </FormItem>
