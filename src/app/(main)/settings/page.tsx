@@ -109,7 +109,7 @@ export default function SettingsPage() {
             <div>
                 <h2 className="text-2xl font-bold tracking-tight">System Settings</h2>
                 <p className="text-muted-foreground">
-                    Manage the system-wide select list data for Silvergroup.
+                    Manage the system-wide select list data for MANIT.
                 </p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -9,7 +9,7 @@ import { SettingsProvider } from '@/context/settings-context';
 
 export const metadata: Metadata = {
   title: 'Escalation Tracker',
-  description: 'Track and manage customer escalations efficiently for Silvergroup.',
+  description: 'Track and manage customer escalations efficiently for MANIT.',
 };
 
 export const viewport: Viewport = {
